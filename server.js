@@ -7,7 +7,6 @@ import cors from "cors";
 import { google } from "googleapis";
 
 const PORT = process.env.PORT || 5000;
-const FRONTEND_ORIGIN = "https://limegreen-tapir-365119.hostingersite.com/";
 
 // 2) pull in the exact names from your .env
 const {
@@ -30,9 +29,23 @@ for (let key of [
     process.exit(1);
   }
 }
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://limegreen-tapir-365119.hostingersite.com",
+];
 
 const app = express();
-app.use(cors({ origin: FRONTEND_ORIGIN }));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+  })
+);
 
 // 4) set up OAuth2 client
 const oauth2Client = new google.auth.OAuth2(
