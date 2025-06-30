@@ -7,7 +7,7 @@ import cors from "cors";
 import { google } from "googleapis";
 
 const PORT = process.env.PORT || 5000;
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
+const FRONTEND_ORIGIN = "https://limegreen-tapir-365119.hostingersite.com/";
 
 // 2) pull in the exact names from your .env
 const {
