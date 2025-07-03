@@ -131,8 +131,8 @@ app.get("/api/fetch-folder", async (req, res) => {
 
     res.json(result);
   } catch (err) {
-    console.error("Google API error:", err.response?.data || err.message);
-    res.status(err.response?.status || 500).send("Google API error");
+    console.error("Google API error:", err.response.data || err.message);
+    res.status(err.response.status || 500).send("Google API error");
   }
 });
 app.listen(PORT, () => {
