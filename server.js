@@ -45,7 +45,14 @@ app.use(
       }
     },
   })
-);
+); // Add this before your route handlers
+app.use((req, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy",
+    "frame-ancestors 'self' http://localhost:5173 https://limegreen-tapir-365119.hostingersite.com"
+  );
+  next();
+});
 
 // 4) set up OAuth2 client
 const oauth2Client = new google.auth.OAuth2(
