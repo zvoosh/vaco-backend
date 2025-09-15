@@ -1,147 +1,41 @@
-// server.js
-import dotenv from "dotenv";
-dotenv.config(); // 1) load .env before anything else
-
 import express from "express";
+import { Storage } from "@google-cloud/storage";
 import cors from "cors";
-import { google } from "googleapis";
-
-const PORT = process.env.PORT || 5000;
-
-// 2) pull in the exact names from your .env
-const {
-  GOOGLE_CLIENT_ID,
-  GOOGLE_CLIENT_SECRET,
-  GOOGLE_REDIRECT_URI,
-  GOOGLE_ACCESS_TOKEN, // must match your .env key
-  GOOGLE_REFRESH_TOKEN, // must match your .env key
-} = process.env;
-
-// 3) sanity-check
-for (let key of [
-  "GOOGLE_CLIENT_ID",
-  "GOOGLE_CLIENT_SECRET",
-  "GOOGLE_REDIRECT_URI",
-  "GOOGLE_REFRESH_TOKEN",
-]) {
-  if (!process.env[key]) {
-    console.error(`❌ Missing env var ${key}`);
-    process.exit(1);
-  }
-}
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://limegreen-tapir-365119.hostingersite.com",
-];
+import dotenv from "dotenv";
+dotenv.config();
 
 const app = express();
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-  })
-); // Add this before your route handlers
-app.use((req, res, next) => {
-  res.setHeader(
-    "Content-Security-Policy",
-    "frame-ancestors 'self' http://localhost:5173 https://limegreen-tapir-365119.hostingersite.com"
-  );
-  next();
+const port = 3001;
+
+app.use(cors());
+
+const storage = new Storage({
+  keyFilename: "./gcs-key.json", // Path to your service account JSON
 });
+const bucketName = process.env.GCS_BUCKET_NAME;
 
-// 4) set up OAuth2 client
-const oauth2Client = new google.auth.OAuth2(
-  GOOGLE_CLIENT_ID,
-  GOOGLE_CLIENT_SECRET,
-  GOOGLE_REDIRECT_URI
-);
-
-// 5) set credentials from your .env
-oauth2Client.setCredentials({
-  // You can include an expired access_token if you like—it’ll auto-refresh.
-  access_token: GOOGLE_ACCESS_TOKEN,
-  refresh_token: GOOGLE_REFRESH_TOKEN,
-});
-
-app.get("/", (req, res) => res.send("✅ Express is live on 5000"));
-
-app.get("/api/fetch-text", async (req, res) => {
-  const fileId = req.query.fileId;
-  if (!fileId) return res.status(400).send("Missing fileId");
+app.get("/files/:folderPrefix", async (req, res) => {
+  const { folderPrefix } = req.params;
 
   try {
-    const drive = google.drive({ version: "v3", auth: oauth2Client });
-    const { data: stream } = await drive.files.get(
-      { fileId, alt: "media" },
-      { responseType: "stream" }
-    );
-    stream.pipe(res).on("error", (e) => {
-      console.error("Stream error", e);
-      res.status(500).send("Error reading file");
-    });
-  } catch (e) {
-    console.error("Google API error:", e);
-    res.status(e.code || 500).send(e.message || "Google API error");
-  }
-});
-app.get("/api/fetch-folder", async (req, res) => {
-  const folderId = req.query.folderId;
-  if (!folderId) return res.status(400).send("Missing folderId");
-
-  try {
-    const drive = google.drive({ version: "v3", auth: oauth2Client });
-
-    // Get root folder metadata
-    const folderMeta = await drive.files.get({
-      fileId: folderId,
-      fields: "id, name, mimeType",
+    const [files] = await storage.bucket(bucketName).getFiles({
+      prefix: `${folderPrefix}/`, // Include trailing slash
     });
 
-    // Fetch direct children
-    const childrenRes = await drive.files.list({
-      q: `'${folderId}' in parents and trashed=false`,
-      fields: "files(id, name, mimeType)",
-      pageSize: 100,
-    });
+    const fileData = files
+      .filter((file) => !file.name.endsWith("/")) // exclude "empty folder" markers
+      .map((file) => ({
+        name: file.name,
+        url: `https://storage.googleapis.com/${bucketName}/${file.name}`,
+      }));
 
-    // Prepare list of children with possible nested children
-    const childrenWithSub = await Promise.all(
-      childrenRes.data.files.map(async (child) => {
-        if (child.mimeType === "application/vnd.google-apps.folder") {
-          const subRes = await drive.files.list({
-            q: `'${child.id}' in parents and trashed=false`,
-            fields: "files(id, name, mimeType)",
-            pageSize: 100,
-          });
-
-          return {
-            ...child,
-            children: subRes.data.files,
-          };
-        } else {
-          return child;
-        }
-      })
-    );
-
-    const result = {
-      id: folderMeta.data.id,
-      name: folderMeta.data.name,
-      mimeType: folderMeta.data.mimeType,
-      children: childrenWithSub,
-    };
-
-    res.json(result);
+    res.json(fileData);
   } catch (err) {
-    console.error("Google API error:", err.response.data || err.message);
-    res.status(err.response.status || 500).send("Google API error");
+    console.error("Error fetching nested files:", err);
+    res.status(500).send("Failed to retrieve nested contents");
   }
 });
-app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
+
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
 });
