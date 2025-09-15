@@ -14,6 +14,11 @@ const storage = new Storage({
 });
 const bucketName = process.env.GCS_BUCKET_NAME;
 
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send("Something broke!");
+});
+
 app.get("/files/:folderPrefix", async (req, res) => {
   const { folderPrefix } = req.params;
 
