@@ -4,3 +4,4 @@ node_modules
 .env.local
 .env.*.local
 config/vaco-464009-4444823ef57d.json
+generateToken.js
