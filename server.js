@@ -2,14 +2,13 @@ import express from "express";
 import { Storage } from "@google-cloud/storage";
 import cors from "cors";
 import dotenv from "dotenv";
+import jwt from "jsonwebtoken";
 dotenv.config();
 
 const app = express();
 const port = 3009;
 
 app.use(cors());
-
-const jwt = require('jsonwebtoken');
 
 const authenticate = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
