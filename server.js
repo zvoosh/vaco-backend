@@ -25,8 +25,9 @@ const authenticate = (req, res, next) => {
 app.use("/files/:folderPrefix", authenticate);
 
 const storage = new Storage({
-  keyFilename: "./config/vaco-464009-4444823ef57d.json", // Path to your service account JSON
+  credentials: JSON.parse(process.env.GCS_CREDENTIALS),
 });
+
 const bucketName = process.env.GCS_BUCKET_NAME;
 
 app.use((err, req, res, next) => {
@@ -57,7 +58,7 @@ app.get("/api/fetch-folder", async (req, res) => {
     res.json(fileData);
   } catch (err) {
     console.error("Error fetching nested files:", err);
-    res.status(500).send({error: err.message});
+    res.status(500).send({ error: err.message });
   }
 });
 app.get("/api/fetch-folder-content", async (req, res) => {
