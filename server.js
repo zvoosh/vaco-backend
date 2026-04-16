@@ -57,7 +57,7 @@ app.get("/api/fetch-folder", async (req, res) => {
     res.json(fileData);
   } catch (err) {
     console.error("Error fetching nested files:", err);
-    res.status(500).send("Failed to retrieve nested contents");
+    res.status(500).send({error: err.message});
   }
 });
 app.get("/api/fetch-folder-content", async (req, res) => {
