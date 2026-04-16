@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "vaco-464009",
+  "private_key_id": "4444823ef57d83606442538fe9ecf94fada81171",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCo0CqedmqNYEO1\nEB0P0qsxE4tsOKdk5TtTyS1ABs74h+/SAmPQnYcv/V9o5SeWeCLGuWrSzpEv3lbJ\n5NFIzTh0eGNojhgo7/CCXBWIFzxR8FQnmU55qcCbAXO8GMrWOteeGfiLnWzcKjOa\nU3yOjc0FvO5cIIaUNKhLM9WGW7JVP8nihH0snd9jRwoutLbLUAV8/RjhCCChO5hU\nQTU6MoPmXcJ9vIydA/ikzpxQ8bhBnjc035RK22J0eYm9tLEF6tlGt3viXcjU7pqC\nT1b3hWthKGgn02FN+pHAG/R+bOjOvNvk1Nz3yydI1GHz/gO56ZQi4ao+w56EZpgH\na/1BrQCVAgMBAAECggEABGGAlaOrkLcskqSUKH62WBvyfJC80Vq8jyhTnwt+MAdx\nExFiTz3jTfzEjteRjy9XcbJKoiVfsa8SsAMa5kmDG0yrgcFcQaW2Z1+l5GX7+AFl\nYbCyD2i3GZ6wRvOawfP9d/ojD9Z6Rn1m4OylORrXdPxp8CSc8XgrXOY/tpCnIFyw\nX4wj3sV2nwZ6YFbp7B5RGVq8isTgeE9gQkXuPLmzvCqI2dTdt8JOEODy0BaOvPLi\n0rFbochPnAieDynmTJ8mhjh1Cz/aNjV6a4mo9jdYV/OudUQk9ZubSjizFsLHhvVp\nLgDJLyoyF84Zkfs1Ofj41F8mzunU9pRC6PWE2x5ZeQKBgQDYD+t8sjIsIXUB65im\nT8oD349rzp93BgPOgqGU1tsogDC/hgmC4ykx6J5YkT+A8IKKxlO5m0jLzzV0m5fW\nPsrdUZvOd7Z+bSsqvcXJoJsy7c9kydgMT0Pvl4sYslHyq5VdLLMYEiPexf4+0qEc\nH2m4qVU6a4ywuvIMVcMFngDAmQKBgQDIBGsa6Hoqn2R3mbqZhx2C7NDZD6Lqh0Jj\nx7xf51IE+1cK0Js14qSAfTFnAMdaWY5n0dNqhqOmvLaT+xiboXbjeryVQ68WA7aM\nLSNPax0pxINJJFEFLjFv31asPQQ6GYe7nkjzrd2VM6ur1F3js05ApiS84egv137I\nZXgTWi/xXQKBgE7h6RDaojS4dlagJFg78z5cxakPg+rZmFQyHzoPA26S9rlF/3z4\n4JZnHkCpruytYou2AuVVy0sVuKd9Ev9WZ4xL+j10OX2I7+Sn6mlFqMP8TOa4Rpef\n7Oaxhkga+o5FlL+yzSQxo0T3Nm7LSaTR1zBjKkms8G2poytbuFr5p76pAoGBAL56\nDrFqUOUEM73+BQit9nm3IlCDpocn1h6FmKvP83jRDhw7eoO/WR8PmhtYT4CIJqhR\n1r7shy6DKnAUQGP9SOXq/Wo8MaGKWa52UdkQzY34GXpu/kUrr2K1Uqnl1X+qzmrq\nmtiMa6bptQOG0v7Dw7KnRfcmP2JIGvGmR8pOKbf1AoGAJCvPudev0q13XvU3pw9l\nPBloa1GWkbq+nfwTl8VQ9/E76aLnOEHiXxHu5QRIy75NhEbj9Thvk8aPe7SgK+YF\noGtoJc9j0VVR1LivCPtjbvjMTgxggHRCHg4j7Zf1xSAIof5GwL6C6y3w58ySW/Ac\nyCihGr0jaIyZBJgMsrM4ScU=\n-----END PRIVATE KEY-----\n",
+  "client_email": "vaco-service-account@vaco-464009.iam.gserviceaccount.com",
+  "client_id": "113013859742746859531",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/vaco-service-account%40vaco-464009.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
