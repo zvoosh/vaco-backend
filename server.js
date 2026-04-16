@@ -8,7 +8,14 @@ dotenv.config();
 const app = express();
 const port = 3009;
 
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173", // lokalni development
+      "https://limegreen-tapir-365119.hostingersite.com/", // tvoj frontend domain
+    ],
+  }),
+);
 
 const authenticate = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
