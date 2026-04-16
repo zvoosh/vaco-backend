@@ -12,7 +12,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173", // lokalni development
-      "https://limegreen-tapir-365119.hostingersite.com/", // tvoj frontend domain
+      "https://limegreen-tapir-365119.hostingersite.com", // tvoj frontend domain
     ],
   }),
 );
