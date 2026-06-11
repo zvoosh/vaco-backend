@@ -108,6 +108,52 @@ app.get("/api/fetch-folder-content", async (req, res) => {
   }
 });
 
+// Returns one signed URL per project subfolder at depth 2 (category/project/file)
+// Used for work grid — avoids generating URLs for every file in every project
+app.get("/api/fetch-project-previews", async (req, res) => {
+  const folderId = decodeURIComponent(req.query.folderId);
+
+  try {
+    const [files] = await storage.bucket(bucketName).getFiles({
+      prefix: `${folderId}/`,
+    });
+
+    // projectKey → first file object found
+    const projectMap = {};
+
+    for (const file of files) {
+      if (file.name.endsWith("/")) continue;
+
+      const relativePath = file.name.slice(`${folderId}/`.length);
+      const parts = relativePath.split("/");
+      if (parts.length < 3) continue; // need category/project/file
+
+      const category = parts[0];
+      const project = parts[1];
+      const projectKey = `${category}/${project}`;
+
+      if (!projectMap[projectKey]) {
+        projectMap[projectKey] = { name: projectKey, file };
+      }
+    }
+
+    const results = await Promise.all(
+      Object.values(projectMap).map(async ({ name, file }) => {
+        const [url] = await file.getSignedUrl({
+          action: "read",
+          expires: Date.now() + 1000 * 60 * 60,
+        });
+        return { name, url };
+      })
+    );
+
+    res.json(results);
+  } catch (err) {
+    console.error("Error fetching project previews:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });
