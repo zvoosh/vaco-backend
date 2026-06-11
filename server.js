@@ -127,35 +127,45 @@ app.get("/api/fetch-project-previews", async (req, res) => {
     });
     const categoryPrefixes = catMeta.prefixes || [];
 
-    // 2. For each category, get project "folders" in parallel
+    // 2. For each category, get project "folders" and direct files in parallel
     const categoryResults = await Promise.all(
       categoryPrefixes.map(async (catPrefix) => {
-        const [, , projMeta] = await bucket.getFiles({
+        const [catFiles, , projMeta] = await bucket.getFiles({
           prefix: catPrefix,
           delimiter: "/",
           autoPaginate: false,
         });
         const projectPrefixes = projMeta.prefixes || [];
+        const catName = catPrefix.slice(`${folderId}/`.length).replace(/\/$/, "");
 
-        // 3. For each project, get first file and sign URL in parallel
-        const projectResults = await Promise.all(
-          projectPrefixes.map(async (projPrefix) => {
-            const [projFiles] = await bucket.getFiles({
-              prefix: projPrefix,
-              maxResults: 1,
-            });
-            const file = projFiles.find((f) => !f.name.endsWith("/"));
-            if (!file) return null;
+        // Case A: category has project subfolders (e.g. CommercialVideo/MaxProtext/)
+        if (projectPrefixes.length > 0) {
+          const projectResults = await Promise.all(
+            projectPrefixes.map(async (projPrefix) => {
+              const [projFiles] = await bucket.getFiles({
+                prefix: projPrefix,
+                maxResults: 1,
+              });
+              const file = projFiles.find((f) => !f.name.endsWith("/"));
+              if (!file) return null;
+              const [url] = await file.getSignedUrl({ action: "read", expires });
+              const relative = projPrefix.slice(`${folderId}/`.length).replace(/\/$/, "");
+              return { name: relative, url };
+            })
+          );
+          return projectResults.filter(Boolean);
+        }
 
+        // Case B: files sit directly in the category folder (e.g. PromoVideo/Balkan BET.mp4)
+        const directFiles = catFiles.filter((f) => !f.name.endsWith("/"));
+        const fileResults = await Promise.all(
+          directFiles.map(async (file) => {
             const [url] = await file.getSignedUrl({ action: "read", expires });
-
-            // name = "CommercialVideo/MaxProtext"
-            const relative = projPrefix.slice(`${folderId}/`.length).replace(/\/$/, "");
-            return { name: relative, url };
+            const filename = file.name.split("/").pop().replace(/\.[^.]+$/, "");
+            return { name: `${catName}/${filename}`, url };
           })
         );
-
-        return projectResults.filter(Boolean);
+        return fileResults;
       })
     );
 
