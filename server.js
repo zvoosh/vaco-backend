@@ -108,68 +108,76 @@ app.get("/api/fetch-folder-content", async (req, res) => {
   }
 });
 
-// Returns one signed URL per project using delimiter-based folder listing.
-// Step 1: list category prefixes (CommercialVideo/, CorporateVideo/, ...)
-// Step 2: for each category list project prefixes in parallel
-// Step 3: for each project get first file and sign URL
-// Much faster than listing all files — no autopagination over hundreds of objects.
+// Collect all project keys (category/project or category/filename) without signing URLs.
+async function collectAllProjectKeys(bucket, folderId) {
+  const [, , catMeta] = await bucket.getFiles({
+    prefix: `${folderId}/`,
+    delimiter: "/",
+    autoPaginate: false,
+  });
+  const categoryPrefixes = catMeta.prefixes || [];
+
+  const allKeys = await Promise.all(
+    categoryPrefixes.map(async (catPrefix) => {
+      const [catFiles, , projMeta] = await bucket.getFiles({
+        prefix: catPrefix,
+        delimiter: "/",
+        autoPaginate: false,
+      });
+      const projectPrefixes = projMeta.prefixes || [];
+      const catName = catPrefix.slice(`${folderId}/`.length).replace(/\/$/, "");
+
+      if (projectPrefixes.length > 0) {
+        return projectPrefixes.map((p) => ({
+          type: "folder",
+          prefix: p,
+          name: p.slice(`${folderId}/`.length).replace(/\/$/, ""),
+        }));
+      }
+
+      return catFiles
+        .filter((f) => !f.name.endsWith("/"))
+        .map((f) => ({
+          type: "file",
+          file: f,
+          name: `${catName}/${f.name.split("/").pop().replace(/\.[^.]+$/, "")}`,
+        }));
+    })
+  );
+
+  return allKeys.flat();
+}
+
+// Paginated project previews — returns signed URLs only for the requested slice.
+// Query params: folderId, offset (default 0), limit (default 10)
 app.get("/api/fetch-project-previews", async (req, res) => {
   const folderId = decodeURIComponent(req.query.folderId);
+  const offset = parseInt(req.query.offset ?? "0", 10);
+  const limit = parseInt(req.query.limit ?? "10", 10);
   const bucket = storage.bucket(bucketName);
   const expires = Date.now() + 1000 * 60 * 60;
 
   try {
-    // 1. Get category "folders"
-    const [, , catMeta] = await bucket.getFiles({
-      prefix: `${folderId}/`,
-      delimiter: "/",
-      autoPaginate: false,
-    });
-    const categoryPrefixes = catMeta.prefixes || [];
+    const allKeys = await collectAllProjectKeys(bucket, folderId);
+    const total = allKeys.length;
+    const slice = allKeys.slice(offset, offset + limit);
 
-    // 2. For each category, get project "folders" and direct files in parallel
-    const categoryResults = await Promise.all(
-      categoryPrefixes.map(async (catPrefix) => {
-        const [catFiles, , projMeta] = await bucket.getFiles({
-          prefix: catPrefix,
-          delimiter: "/",
-          autoPaginate: false,
-        });
-        const projectPrefixes = projMeta.prefixes || [];
-        const catName = catPrefix.slice(`${folderId}/`.length).replace(/\/$/, "");
-
-        // Case A: category has project subfolders (e.g. CommercialVideo/MaxProtext/)
-        if (projectPrefixes.length > 0) {
-          const projectResults = await Promise.all(
-            projectPrefixes.map(async (projPrefix) => {
-              const [projFiles] = await bucket.getFiles({
-                prefix: projPrefix,
-                maxResults: 1,
-              });
-              const file = projFiles.find((f) => !f.name.endsWith("/"));
-              if (!file) return null;
-              const [url] = await file.getSignedUrl({ action: "read", expires });
-              const relative = projPrefix.slice(`${folderId}/`.length).replace(/\/$/, "");
-              return { name: relative, url };
-            })
-          );
-          return projectResults.filter(Boolean);
+    const items = await Promise.all(
+      slice.map(async (key) => {
+        let file;
+        if (key.type === "folder") {
+          const [files] = await bucket.getFiles({ prefix: key.prefix, maxResults: 1 });
+          file = files.find((f) => !f.name.endsWith("/"));
+        } else {
+          file = key.file;
         }
-
-        // Case B: files sit directly in the category folder (e.g. PromoVideo/Balkan BET.mp4)
-        const directFiles = catFiles.filter((f) => !f.name.endsWith("/"));
-        const fileResults = await Promise.all(
-          directFiles.map(async (file) => {
-            const [url] = await file.getSignedUrl({ action: "read", expires });
-            const filename = file.name.split("/").pop().replace(/\.[^.]+$/, "");
-            return { name: `${catName}/${filename}`, url };
-          })
-        );
-        return fileResults;
+        if (!file) return null;
+        const [url] = await file.getSignedUrl({ action: "read", expires });
+        return { name: key.name, url };
       })
     );
 
-    res.json(categoryResults.flat());
+    res.json({ items: items.filter(Boolean), total, offset, limit });
   } catch (err) {
     console.error("Error fetching project previews:", err);
     res.status(500).json({ error: err.message });
