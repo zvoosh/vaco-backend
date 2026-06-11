@@ -108,46 +108,58 @@ app.get("/api/fetch-folder-content", async (req, res) => {
   }
 });
 
-// Returns one signed URL per project subfolder at depth 2 (category/project/file)
-// Used for work grid — avoids generating URLs for every file in every project
+// Returns one signed URL per project using delimiter-based folder listing.
+// Step 1: list category prefixes (CommercialVideo/, CorporateVideo/, ...)
+// Step 2: for each category list project prefixes in parallel
+// Step 3: for each project get first file and sign URL
+// Much faster than listing all files — no autopagination over hundreds of objects.
 app.get("/api/fetch-project-previews", async (req, res) => {
   const folderId = decodeURIComponent(req.query.folderId);
+  const bucket = storage.bucket(bucketName);
+  const expires = Date.now() + 1000 * 60 * 60;
 
   try {
-    const [files] = await storage.bucket(bucketName).getFiles({
+    // 1. Get category "folders"
+    const [, , catMeta] = await bucket.getFiles({
       prefix: `${folderId}/`,
+      delimiter: "/",
+      autoPaginate: false,
     });
+    const categoryPrefixes = catMeta.prefixes || [];
 
-    // projectKey → first file object found
-    const projectMap = {};
-
-    for (const file of files) {
-      if (file.name.endsWith("/")) continue;
-
-      const relativePath = file.name.slice(`${folderId}/`.length);
-      const parts = relativePath.split("/");
-      if (parts.length < 3) continue; // need category/project/file
-
-      const category = parts[0];
-      const project = parts[1];
-      const projectKey = `${category}/${project}`;
-
-      if (!projectMap[projectKey]) {
-        projectMap[projectKey] = { name: projectKey, file };
-      }
-    }
-
-    const results = await Promise.all(
-      Object.values(projectMap).map(async ({ name, file }) => {
-        const [url] = await file.getSignedUrl({
-          action: "read",
-          expires: Date.now() + 1000 * 60 * 60,
+    // 2. For each category, get project "folders" in parallel
+    const categoryResults = await Promise.all(
+      categoryPrefixes.map(async (catPrefix) => {
+        const [, , projMeta] = await bucket.getFiles({
+          prefix: catPrefix,
+          delimiter: "/",
+          autoPaginate: false,
         });
-        return { name, url };
+        const projectPrefixes = projMeta.prefixes || [];
+
+        // 3. For each project, get first file and sign URL in parallel
+        const projectResults = await Promise.all(
+          projectPrefixes.map(async (projPrefix) => {
+            const [projFiles] = await bucket.getFiles({
+              prefix: projPrefix,
+              maxResults: 1,
+            });
+            const file = projFiles.find((f) => !f.name.endsWith("/"));
+            if (!file) return null;
+
+            const [url] = await file.getSignedUrl({ action: "read", expires });
+
+            // name = "CommercialVideo/MaxProtext"
+            const relative = projPrefix.slice(`${folderId}/`.length).replace(/\/$/, "");
+            return { name: relative, url };
+          })
+        );
+
+        return projectResults.filter(Boolean);
       })
     );
 
-    res.json(results);
+    res.json(categoryResults.flat());
   } catch (err) {
     console.error("Error fetching project previews:", err);
     res.status(500).json({ error: err.message });
